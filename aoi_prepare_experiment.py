@@ -367,6 +367,97 @@ def render_create_uelm_adspin_from_template(cfg: dict, scripts_root: Path, exp_r
     return script
 
 
+def render_create_uelm_finalspin_sh(cfg: dict, exp_root: Path) -> str:
+    expid = cfg["expid"]
+    e3sm = cfg.get("e3sm", {})
+    din_root = e3sm.get("din_root", "//gpfs/wolf2/cades/cli185/world-shared/e3sm")
+    src_root = e3sm.get("src_root", "$(git rev-parse --show-toplevel)")
+    mach = e3sm.get("mach", "cades-baseline")
+    compiler = e3sm.get("compiler", "gnu")
+    mpilib = e3sm.get("mpilib", "openmpi")
+    compset = e3sm.get("compset", "I1850CNPRDCTCBC")
+
+    # Derive TES data group id for domain/surfdata filename patterns
+    _, _, tes_data_group_id = _derive_template_vars_from_cfg(cfg)
+
+    lines = []
+    lines.append("#!/bin/bash")
+    lines.append("set -e")
+    lines.append("")
+    lines.append(f": \"${{EXPID:={expid}}}\"")
+    lines.append(': "${EXP_ROOT:=$(cd "$(dirname "$0")"/.. && pwd)}"')
+    lines.append(f': "${{CASE_COMPSET:={compset}}}"')
+    lines.append(f": \"${{E3SM_DIN:={din_root}}}\"")
+    lines.append(f": \"${{E3SM_SRCROOT:={src_root}}}\"")
+    lines.append("")
+    lines.append("CASE_DATA=\"${EXP_ROOT}\"")
+    lines.append("CASEDIR=\"${E3SM_SRCROOT}/e3sm_cases/uELM_${EXPID}_${CASE_COMPSET}_finalspin\"")
+    lines.append("")
+    # Discover latest domain/surfdata filenames
+    lines.append(f"DOMAIN_FILE=$(ls -1 ${{CASE_DATA}}/domain_surfdata/${{EXPID}}_domain.lnd.{tes_data_group_id}.4km.1d.c*.nc 2>/dev/null | sort | tail -n1 | xargs -r basename)")
+    lines.append("if [ -z \"${DOMAIN_FILE}\" ]; then echo 'ERROR: Domain file not found'; exit 2; fi")
+    lines.append(f"SURFDATA_FILE=$(ls -1 ${{CASE_DATA}}/domain_surfdata/${{EXPID}}_surfdata.{tes_data_group_id}.4km.1d.NLCD.c*.nc 2>/dev/null | sort | tail -n1 | xargs -r basename)")
+    lines.append("if [ -z \"${SURFDATA_FILE}\" ]; then echo 'ERROR: Surfdata file not found'; exit 2; fi")
+    lines.append("")
+    lines.append("rm -rf \"${CASEDIR}\"")
+    lines.append("")
+    lines.append(f"${{E3SM_SRCROOT}}/cime/scripts/create_newcase --case \"${{CASEDIR}}\" --mach {mach} --compiler {compiler} --mpilib {mpilib} --compset \"${{CASE_COMPSET}}\" --res ELM_USRDAT  --handle-preexisting-dirs r --srcroot \"${{E3SM_SRCROOT}}\"")
+    lines.append("")
+    lines.append("cd \"${CASEDIR}\"")
+    lines.append("")
+    lines.append("./xmlchange PIO_TYPENAME=\"pnetcdf\"")
+    lines.append("./xmlchange PIO_NETCDF_FORMAT=\"64bit_data\"")
+    lines.append("./xmlchange DIN_LOC_ROOT=\"${E3SM_DIN}\"")
+    lines.append("./xmlchange DIN_LOC_ROOT_CLMFORC=\"${CASE_DATA}\"")
+    lines.append("./xmlchange CIME_OUTPUT_ROOT=\"${E3SM_SRCROOT}/e3sm_runs/\"")
+    lines.append("")
+    lines.append("# Data mode and domain bindings")
+    lines.append("./xmlchange DATM_MODE=\"uELM_TES\"")
+    lines.append("./xmlchange ATM_DOMAIN_PATH=\"${CASE_DATA}/domain_surfdata/\"")
+    lines.append("./xmlchange ATM_DOMAIN_FILE=\"${DOMAIN_FILE}\"")
+    lines.append("./xmlchange LND_DOMAIN_PATH=\"${CASE_DATA}/domain_surfdata/\"")
+    lines.append("./xmlchange LND_DOMAIN_FILE=\"${DOMAIN_FILE}\"")
+    lines.append("")
+    lines.append("# Scientific configuration for final spin")
+    lines.append("./xmlchange STOP_N=\"800\"")
+    lines.append("./xmlchange REST_N=\"20\"")
+    lines.append("./xmlchange STOP_OPTION=\"nyears\"")
+    lines.append("./xmlchange ATM_NCPL=\"24\"")
+    lines.append("./xmlchange DATM_CLMNCEP_YR_START=\"1980\"")
+    lines.append("./xmlchange DATM_CLMNCEP_YR_END=\"1999\"")
+    lines.append("./xmlchange DATM_CLMNCEP_YR_ALIGN=\"1990\"")
+    lines.append("./xmlchange CONTINUE_RUN=\"FALSE\"")
+    lines.append("./xmlchange ELM_ACCELERATED_SPINUP=\"off\"")
+    lines.append("./xmlchange ELM_BLDNML_OPTS=\"-bgc bgc -nutrient cnp -nutrient_comp_pathway rd  -soil_decomp ctc -methane\"")
+    lines.append("./xmlchange RUN_TYPE=\"startup\"")
+    lines.append("./xmlchange RUN_STARTDATE=\"0401-01-01\"")
+    lines.append("")
+    lines.append("cat >> user_nl_elm <<EOF")
+    lines.append("finidat = '${E3SM_SRCROOT}/e3sm_runs/uELM_${EXPID}_${CASE_COMPSET}/run/uELM_${EXPID}_${CASE_COMPSET}.elm.r.0401-01-01-00000.nc'")
+    lines.append("fsurdat = '${CASE_DATA}/domain_surfdata/${SURFDATA_FILE}'")
+    lines.append("")
+    lines.append("      spinup_state = 0")
+    lines.append("      suplphos = 'NONE'")
+    lines.append("      hist_nhtfrq=-175200")
+    lines.append("      hist_mfilt=1")
+    lines.append("EOF")
+    lines.append("")
+    lines.append("# Computational resources")
+    lines.append("./xmlchange NTASKS=\"1\"")
+    lines.append("./xmlchange NTASKS_PER_INST=\"1\"")
+    lines.append("./xmlchange MAX_MPITASKS_PER_NODE=\"1\"")
+    lines.append("./xmlchange JOB_WALLCLOCK_TIME=\"6:00:00\"")
+    lines.append("")
+    lines.append("./case.setup --reset")
+    lines.append("./case.setup")
+    lines.append("")
+    lines.append("./case.build --clean-all")
+    lines.append("./case.build")
+    lines.append("")
+    # lines.append("./case.submit")  # left to the user
+    return "\n".join(lines) + "\n"
+
+
 def _expand_expid_placeholders(value: str, expid: str) -> str:
     if not isinstance(value, str):
         return value
@@ -459,6 +550,11 @@ def main() -> None:
     create_uelm_adspin = render_create_uelm_adspin_from_template(cfg, scripts_root, exp_root)
     write_text_file(user_scripts_dir / "create_uELM_adspin.sh", create_uelm_adspin)
     make_executable(user_scripts_dir / "create_uELM_adspin.sh")
+
+    # Add uELM final spin creator
+    create_uelm_finalspin = render_create_uelm_finalspin_sh(cfg, exp_root)
+    write_text_file(user_scripts_dir / "create_uELM_finalspin.sh", create_uelm_finalspin)
+    make_executable(user_scripts_dir / "create_uELM_finalspin.sh")
 
     # Optionally execute steps now
     if args.run_domain_surfdata:
