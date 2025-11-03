@@ -1,4 +1,4 @@
-TES AOI Input Generator
+lsTES AOI Input Generator
 
 Purpose
 - Prepare domain, surfdata, and forcing subsets for a user-defined Area Of Interest (AOI) for TES/uELM workflows.
@@ -108,7 +108,7 @@ cd /gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/tes_aoi_release/TNdemo/s
 source ./export_env.sh
 bash run_domain_surfdata.sh
 
-# 4) Generate forcing (Slurm)  (Takes upto 20 minutes for TNdemo case)
+# 4) Generate forcing (Slurm)  (Takes upto 90 minutes for TNdemo case)
 sbatch run_forcing.sbatch
 
 # 5) Create model links

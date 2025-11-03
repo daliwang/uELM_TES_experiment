@@ -3,6 +3,7 @@
 import argparse
 import json
 import os
+import re
 import shutil
 import stat
 import sys
@@ -54,7 +55,7 @@ def render_run_domain_surfdata_sh(cfg: dict, scripts_dir: Path, exp_root: Path) 
     lines.append("")
     lines.append("date_string=$(date +'%y%m%d-%H%M')")
     lines.append(f": \"${{EXPID:={expid}}}\"")
-    lines.append(f": \"${{EXP_ROOT:={exp_root.as_posix()}}}\"")
+    lines.append(': "${EXP_ROOT:=$(cd "$(dirname "$0")"/.. && pwd)}"')
     lines.append(f": \"${{AOI_POINTS_DIR:={aoi_dir}}}\"")
     lines.append(f": \"${{AOI_POINTS_FILE:={aoi_file}}}\"")
     lines.append(f": \"${{BASE_DOMAIN_FILE:={base_domain_file}}}\"")
@@ -110,13 +111,10 @@ def render_run_forcing_sbatch(cfg: dict, scripts_dir: Path, exp_root: Path) -> s
     lines.append("# Source exported environment if present")
     lines.append("if [ -f ./export_env.sh ]; then . ./export_env.sh; fi")
 
-    lines.append("SRC_ROOT=$(git rev-parse --show-toplevel)")
-    lines.append("EXP_ROOT=\"${SRC_ROOT}/${EXPID}\"")
-    
-    lines.append("echo \"EXP_ROOT: ${EXP_ROOT}\"")
-    lines.append("echo \"SRC_ROOT: ${SRC_ROOT}\"")
-
-    lines.append("cd \"${EXP_ROOT}/scripts\"")
+    lines.append('SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"')
+    lines.append('EXP_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"')
+    lines.append('echo "EXP_ROOT: ${EXP_ROOT}"')
+    lines.append('cd "${EXP_ROOT}/scripts"')
 
     lines.append("")
     lines.append("date_string=$(date +'%y%m%d-%H%M')")
@@ -196,19 +194,20 @@ def render_create_uelm_adspin_sh(cfg: dict, exp_root: Path) -> str:
     mach = e3sm.get("mach", "cades-baseline")
     compiler = e3sm.get("compiler", "gnu")
     mpilib = e3sm.get("mpilib", "openmpi")
-    compset = e3sm.get("compset", "I1850uELMTESCNPRDCTCBC")
+    compset = e3sm.get("compset", "I1850CNPRDCTCBC")
 
     lines = []
     lines.append("#!/bin/bash")
     lines.append("set -e")
     lines.append("")
     lines.append(f": \"${{EXPID:={expid}}}\"")
-    lines.append(f": \"${{EXP_ROOT:={exp_root.as_posix()}}}\"")
+    lines.append(': "${EXP_ROOT:=$(cd "$(dirname "$0")"/.. && pwd)}"')
+    lines.append(f': "${{CASE_COMPSET:={compset}}}"')
     lines.append(f": \"${{E3SM_DIN:={din_root}}}\"")
     lines.append(f": \"${{E3SM_SRCROOT:={src_root}}}\"")
     lines.append("")
     lines.append("CASE_DATA=\"${EXP_ROOT}\"")
-    lines.append("CASEDIR=\"${E3SM_SRCROOT}/e3sm_cases/uELM_${EXPID}_I1850uELMCNPRDCTCBC\"")
+    lines.append("CASEDIR=\"${E3SM_SRCROOT}/e3sm_cases/uELM_${EXPID}_${CASE_COMPSET}\"")
     lines.append("")
     # Discover latest domain/surfdata filenames
     lines.append("DOMAIN_FILE=$(ls -1 ${CASE_DATA}/domain_surfdata/${EXPID}_domain.lnd.TES_SE.4km.1d.c*.nc 2>/dev/null | sort | tail -n1 | xargs -r basename)")
@@ -218,7 +217,7 @@ def render_create_uelm_adspin_sh(cfg: dict, exp_root: Path) -> str:
     lines.append("")
     lines.append("rm -rf \"${CASEDIR}\"")
     lines.append("")
-    lines.append(f"${{E3SM_SRCROOT}}/cime/scripts/create_newcase --case \"${{CASEDIR}}\" --mach {mach} --compiler {compiler} --mpilib {mpilib} --compset {compset} --res ELM_USRDAT  --handle-preexisting-dirs r --srcroot \"${{E3SM_SRCROOT}}\"")
+    lines.append(f"${{E3SM_SRCROOT}}/cime/scripts/create_newcase --case \"${{CASEDIR}}\" --mach {mach} --compiler {compiler} --mpilib {mpilib} --compset \"${{CASE_COMPSET}}\" --res ELM_USRDAT  --handle-preexisting-dirs r --srcroot \"${{E3SM_SRCROOT}}\"")
     lines.append("")
     lines.append("cd \"${CASEDIR}\"")
     lines.append("")
@@ -273,6 +272,126 @@ def render_create_uelm_adspin_sh(cfg: dict, exp_root: Path) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _derive_template_vars_from_cfg(cfg: dict) -> tuple[str, str, str]:
+    base_domain_path = Path(cfg["source"]["base_domain_file"]).expanduser()
+    parts = base_domain_path.parts
+    # Derive KILOCRAFT_ROOT (up to and including 'kiloCraft')
+    if "kiloCraft" in parts:
+        kilo_idx = parts.index("kiloCraft")
+        kilocraft_root = Path(*parts[: kilo_idx + 1]).as_posix()
+    else:
+        # Fallback to parent three levels up as a conservative default
+        kilocraft_root = base_domain_path.parents[5].as_posix()
+
+    # Derive TES_DOMAIN_FORCING_GROUP_ID (segment after TES_cases_data)
+    if "TES_cases_data" in parts:
+        tes_cases_idx = parts.index("TES_cases_data")
+        tes_domain_forcing_group_id = parts[tes_cases_idx + 1]
+    else:
+        tes_domain_forcing_group_id = ""
+
+    # Derive TES_DATA_GROUP_ID from filename pattern: domain.lnd.<GROUP>.4km...
+    filename = base_domain_path.name
+    # Example: domain.lnd.TES_SE.4km.1d.c240827.nc -> TES_SE
+    tokens = filename.split(".")
+    tes_data_group_id = tokens[2] if len(tokens) > 2 else "TES_SE"
+
+    return kilocraft_root, tes_domain_forcing_group_id, tes_data_group_id
+
+
+def _replace_assignment(script_text: str, var_name: str, value: str) -> str:
+    # Replace lines like VAR="..." preserving quotes
+    pattern = re.compile(rf'^(\s*{re.escape(var_name)}=)".*"\s*$', re.MULTILINE)
+    return pattern.sub(rf'\1"{value}"', script_text)
+
+
+def render_create_uelm_adspin_from_template(cfg: dict, scripts_root: Path, exp_root: Path) -> str:
+    template_path = scripts_root / "TES_case_creation_template.sh"
+    if not template_path.exists():
+        # Fallback to old renderer if template is missing
+        return render_create_uelm_adspin_sh(cfg, exp_root)
+
+    script = template_path.read_text()
+
+    expid = cfg["expid"]
+    e3sm = cfg.get("e3sm", {})
+    kmelm_root = e3sm.get("src_root", "").rstrip("/")
+    din_root = e3sm.get("din_root", "")
+    compset = e3sm.get("compset", "")
+
+    kilocraft_root, tes_group_id, tes_data_group_id = _derive_template_vars_from_cfg(cfg)
+
+    # Ensure trailing slashes to match template style
+    if kmelm_root:
+        kmelm_root = kmelm_root + "/"
+    if not kilocraft_root.endswith("/"):
+        kilocraft_root = kilocraft_root + "/"
+
+    # Perform targeted replacements
+    script = _replace_assignment(script, "EXPID", expid)
+    if kmelm_root:
+        script = _replace_assignment(script, "KMELM_ROOT", kmelm_root)
+    if kilocraft_root:
+        script = _replace_assignment(script, "KILOCRAFT_ROOT", kilocraft_root)
+    if din_root:
+        script = _replace_assignment(script, "E3SM_DIN", din_root)
+    if compset:
+        script = _replace_assignment(script, "CASE_COMPSET", compset)
+    if tes_group_id:
+        script = _replace_assignment(script, "TES_DOMAIN_FORCING_GROUP_ID", tes_group_id)
+    if tes_data_group_id:
+        script = _replace_assignment(script, "TES_DATA_GROUP_ID", tes_data_group_id)
+
+    # Ensure CASE_DATA points to the experiment root (parent of scripts)
+    script = re.sub(
+        r'^\s*CASE_DATA=.*$',
+        'CASE_DATA="$(cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd)"',
+        script,
+        flags=re.MULTILINE,
+    )
+
+    # Make DOMAIN_FILE and SURFDATA_FILE dynamic based on latest timestamp in CASE_DATA
+    script = re.sub(
+        r'^\s*DOMAIN_FILE=.*$',
+        'DOMAIN_FILE=$(ls -1 ${CASE_DATA}/domain_surfdata/${EXPID}_domain.lnd.${TES_DATA_GROUP_ID}.4km.1d.c*.nc 2>/dev/null | sort | tail -n1 | xargs -r basename)',
+        script,
+        flags=re.MULTILINE,
+    )
+    script = re.sub(
+        r'^\s*SURFDATA_FILE=.*$',
+        'SURFDATA_FILE=$(ls -1 ${CASE_DATA}/domain_surfdata/${EXPID}_surfdata.${TES_DATA_GROUP_ID}.4km.1d.NLCD.c*.nc 2>/dev/null | sort | tail -n1 | xargs -r basename)',
+        script,
+        flags=re.MULTILINE,
+    )
+
+    return script
+
+
+def _expand_expid_placeholders(value: str, expid: str) -> str:
+    if not isinstance(value, str):
+        return value
+    # Support ${expid}, $expid (case-insensitive)
+    for token in ("${expid}", "${EXPID}", "$expid", "$EXPID"):
+        value = value.replace(token, expid)
+    return value
+
+
+def expand_config_vars(cfg: dict) -> dict:
+    """Return a copy of cfg with $expid/${expid} placeholders expanded in string values."""
+    expid = cfg.get("expid", "")
+
+    def _walk(node):
+        if isinstance(node, dict):
+            return {k: _walk(v) for k, v in node.items()}
+        if isinstance(node, list):
+            return [_walk(v) for v in node]
+        if isinstance(node, str):
+            return _expand_expid_placeholders(node, expid)
+        return node
+
+    return _walk(cfg)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Prepare a TES AOI experiment directory and wrappers.")
     parser.add_argument("--config", required=True, help="Path to JSON config file")
@@ -284,6 +403,7 @@ def main() -> None:
 
     cfg_path = resolve_required_file(args.config, "config JSON")
     cfg = json.loads(cfg_path.read_text())
+    cfg = expand_config_vars(cfg)
 
     expid = cfg["expid"]
     exp_root = Path(cfg["experiment_root"]).expanduser()
@@ -335,8 +455,8 @@ def main() -> None:
     write_text_file(user_scripts_dir / "export_env.sh", export_env_sh)
     make_executable(user_scripts_dir / "export_env.sh")
 
-    # Add uELM adspin creator
-    create_uelm_adspin = render_create_uelm_adspin_sh(cfg, exp_root)
+    # Add uELM adspin creator (from updated template)
+    create_uelm_adspin = render_create_uelm_adspin_from_template(cfg, scripts_root, exp_root)
     write_text_file(user_scripts_dir / "create_uELM_adspin.sh", create_uelm_adspin)
     make_executable(user_scripts_dir / "create_uELM_adspin.sh")
 
