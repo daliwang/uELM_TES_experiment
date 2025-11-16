@@ -111,8 +111,9 @@ def render_run_forcing_sbatch(cfg: dict, scripts_dir: Path, exp_root: Path) -> s
     lines.append("# Source exported environment if present")
     lines.append("if [ -f ./export_env.sh ]; then . ./export_env.sh; fi")
 
-    lines.append('SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"')
-    lines.append('EXP_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"')
+    #lines.append('SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"')
+    #lines.append('EXP_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"')
+    lines.append('EXP_ROOT="$(cd "$(dirname "$0")"/.. && pwd)"')
     lines.append('echo "EXP_ROOT: ${EXP_ROOT}"')
     lines.append('cd "${EXP_ROOT}/scripts"')
 
@@ -377,31 +378,46 @@ def render_create_uelm_finalspin_sh(cfg: dict, exp_root: Path) -> str:
     mpilib = e3sm.get("mpilib", "openmpi")
     compset = e3sm.get("compset", "I1850CNPRDCTCBC")
 
-    # Derive TES data group id for domain/surfdata filename patterns
-    _, _, tes_data_group_id = _derive_template_vars_from_cfg(cfg)
+    # Derive template variables similar to adspin template
+    kilocraft_root, tes_domain_forcing_group_id, tes_data_group_id = _derive_template_vars_from_cfg(cfg)
+    # Ensure trailing slash like the adspin script style
+    if not kilocraft_root.endswith("/"):
+        kilocraft_root = kilocraft_root + "/"
 
     lines = []
     lines.append("#!/bin/bash")
     lines.append("set -e")
     lines.append("")
-    lines.append(f": \"${{EXPID:={expid}}}\"")
-    lines.append(': "${EXP_ROOT:=$(cd "$(dirname "$0")"/.. && pwd)}"')
-    lines.append(f': "${{CASE_COMPSET:={compset}}}"')
-    lines.append(f": \"${{E3SM_DIN:={din_root}}}\"")
-    lines.append(f": \"${{E3SM_SRCROOT:={src_root}}}\"")
+    # Environment-style variable definitions mirroring create_uELM_adspin.sh
+    lines.append(f'KILOCRAFT_ROOT="{kilocraft_root}"')
+    lines.append('KMELM_ROOT="/gpfs/wolf2/cades/cli185/proj-shared/wangd/kmELM/"')
+    lines.append('KMELM_CASE_ROOT="${KMELM_ROOT}/e3sm_cases/"')
+    lines.append('KMELM_RUN_ROOT="${KMELM_ROOT}/e3sm_runs/"')
+    lines.append('E3SM_SRC_ROOT="${KMELM_ROOT}/E3SM/"')
+    lines.append(f'E3SM_DIN="{din_root}"')
     lines.append("")
-    lines.append("CASE_DATA=\"${EXP_ROOT}\"")
-    lines.append("CASEDIR=\"${E3SM_SRCROOT}/e3sm_cases/uELM_${EXPID}_${CASE_COMPSET}_finalspin\"")
+    lines.append('TES_DATA_ROOT="$KILOCRAFT_ROOT/TES_cases_data/"')
+    if tes_domain_forcing_group_id:
+        lines.append(f'TES_DOMAIN_FORCING_GROUP_ID="{tes_domain_forcing_group_id}"')
+    else:
+        lines.append('TES_DOMAIN_FORCING_GROUP_ID=""')
+    lines.append(f'TES_DATA_GROUP_ID="{tes_data_group_id}"')
+    lines.append("")
+    lines.append(f'EXPID="{expid}"')
+    lines.append(f'CASE_COMPSET="{compset}"')
+    lines.append("")
+    lines.append('CASEDIR="$KMELM_CASE_ROOT/${TES_DOMAIN_FORCING_GROUP_ID}/uELM_${EXPID}_${CASE_COMPSET}_finalspin"')
+    lines.append('CASE_DATA="$(cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd)"')
     lines.append("")
     # Discover latest domain/surfdata filenames
-    lines.append(f"DOMAIN_FILE=$(ls -1 ${{CASE_DATA}}/domain_surfdata/${{EXPID}}_domain.lnd.{tes_data_group_id}.4km.1d.c*.nc 2>/dev/null | sort | tail -n1 | xargs -r basename)")
+    lines.append("DOMAIN_FILE=$(ls -1 ${CASE_DATA}/domain_surfdata/${EXPID}_domain.lnd.${TES_DATA_GROUP_ID}.4km.1d.c*.nc 2>/dev/null | sort | tail -n1 | xargs -r basename)")
     lines.append("if [ -z \"${DOMAIN_FILE}\" ]; then echo 'ERROR: Domain file not found'; exit 2; fi")
-    lines.append(f"SURFDATA_FILE=$(ls -1 ${{CASE_DATA}}/domain_surfdata/${{EXPID}}_surfdata.{tes_data_group_id}.4km.1d.NLCD.c*.nc 2>/dev/null | sort | tail -n1 | xargs -r basename)")
+    lines.append("SURFDATA_FILE=$(ls -1 ${CASE_DATA}/domain_surfdata/${EXPID}_surfdata.${TES_DATA_GROUP_ID}.4km.1d.NLCD.c*.nc 2>/dev/null | sort | tail -n1 | xargs -r basename)")
     lines.append("if [ -z \"${SURFDATA_FILE}\" ]; then echo 'ERROR: Surfdata file not found'; exit 2; fi")
     lines.append("")
     lines.append("rm -rf \"${CASEDIR}\"")
     lines.append("")
-    lines.append(f"${{E3SM_SRCROOT}}/cime/scripts/create_newcase --case \"${{CASEDIR}}\" --mach {mach} --compiler {compiler} --mpilib {mpilib} --compset \"${{CASE_COMPSET}}\" --res ELM_USRDAT  --handle-preexisting-dirs r --srcroot \"${{E3SM_SRCROOT}}\"")
+    lines.append(f'${{E3SM_SRC_ROOT}}/cime/scripts/create_newcase --case "${{CASEDIR}}" --mach {mach} --compiler {compiler} --mpilib {mpilib} --compset "${{CASE_COMPSET}}" --res ELM_USRDAT  --handle-preexisting-dirs r --srcroot "${{E3SM_SRC_ROOT}}"')
     lines.append("")
     lines.append("cd \"${CASEDIR}\"")
     lines.append("")
@@ -409,7 +425,7 @@ def render_create_uelm_finalspin_sh(cfg: dict, exp_root: Path) -> str:
     lines.append("./xmlchange PIO_NETCDF_FORMAT=\"64bit_data\"")
     lines.append("./xmlchange DIN_LOC_ROOT=\"${E3SM_DIN}\"")
     lines.append("./xmlchange DIN_LOC_ROOT_CLMFORC=\"${CASE_DATA}\"")
-    lines.append("./xmlchange CIME_OUTPUT_ROOT=\"${E3SM_SRCROOT}/e3sm_runs/\"")
+    lines.append("./xmlchange CIME_OUTPUT_ROOT=\"$KMELM_RUN_ROOT\"")
     lines.append("")
     lines.append("# Data mode and domain bindings")
     lines.append("./xmlchange DATM_MODE=\"uELM_TES\"")
@@ -433,7 +449,7 @@ def render_create_uelm_finalspin_sh(cfg: dict, exp_root: Path) -> str:
     lines.append("./xmlchange RUN_STARTDATE=\"0401-01-01\"")
     lines.append("")
     lines.append("cat >> user_nl_elm <<EOF")
-    lines.append("finidat = '${E3SM_SRCROOT}/e3sm_runs/uELM_${EXPID}_${CASE_COMPSET}/run/uELM_${EXPID}_${CASE_COMPSET}.elm.r.0401-01-01-00000.nc'")
+    lines.append("finidat = '${KMELM_RUN_ROOT}/uELM_${EXPID}_${CASE_COMPSET}/run/uELM_${EXPID}_${CASE_COMPSET}.elm.r.0401-01-01-00000.nc'")
     lines.append("fsurdat = '${CASE_DATA}/domain_surfdata/${SURFDATA_FILE}'")
     lines.append("")
     lines.append("      spinup_state = 0")
