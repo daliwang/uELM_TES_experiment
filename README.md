@@ -163,3 +163,154 @@ Environment
 License
 - MIT (see `LICENSE`)
 
+---
+
+# Knox AOI Workflow: Creating kmELM Cases and Spinup
+
+This README guides you through creating kmELM cases and performing accelerated spinup (adspin) and final spinup using the `tes_aoi_release` repository. All case creation and spinup operations are performed within the `tes_aoi_release` directory structure.
+
+## Overview
+
+This workflow consists of three main phases:
+1. **AOI Data Preparation**: Prepare domain, surfdata, and forcing data for your AOI
+2. **Accelerated Spinup**: Create and run the uELM accelerated spinup case
+3. **Final Spinup**: Create and run the final spinup case (optionally using AI-adjusted restart files from LandSim)
+
+## Phase 1: AOI Data Preparation
+
+### Step 0. Update the config
+
+Edit `aoi_knox_config.json` before running anything:
+- Line 9 `experiment_root`: change to **your** desired output folder.
+- Line 10/11 `aoi_points.dir`: change to the directory that contains `knox_xcyc.csv` under your path.
+
+Example:
+```json
+"experiment_root": "/gpfs/.../yourname/tes_aoi_release/knox",
+"aoi_points": {
+  "dir": "/gpfs/.../yourname/tes_aoi_release",
+  "file": "knox_xcyc.csv"
+}
+```
+
+### Step 1. Prepare the experiment layout
+
+```bash
+cd tes_aoi_release
+python aoi_prepare_experiment.py --config aoi_knox_config.json
+```
+
+Creates `knox/domain_surfdata`, `knox/forcing`, and `knox/scripts/` with helper scripts.
+
+### Step 2. Build domain & surfdata for the point
+
+```bash
+cd knox/scripts
+source export_env.sh
+bash run_domain_surfdata.sh
+```
+
+Outputs single-point domain/surfdata files in `knox/domain_surfdata/`.
+
+### Step 3. Subset forcing data
+
+```bash
+sbatch run_forcing.sbatch        # preferred on Slurm
+# or: sh run_forcing.sbatch      # run interactively (uses srun inside)
+```
+
+Results appear in `knox/forcing/` (three subfolders).
+
+### Step 4. Create model-facing links
+
+```bash
+bash create_links.sh
+```
+
+Generates `knox/atm_forcing.datm7.km.1d/` with symlinks that match E3SM expectations.
+
+## Phase 2: Accelerated Spinup (Adspin)
+
+### Step 1. Generate uELM accelerated spinup case
+
+1. Edit `knox/scripts/create_uELM_adspin.sh` so the paths at the top point to **your** installs. The script honours the environment variables `KILOCRAFT_ROOT` and `KMELM_ROOT`. Set them or edit the file (line 8) before running.
+
+   ```bash
+   export KMELM_ROOT=/gpfs/.../yourname/kmELM
+   export KILOCRAFT_ROOT=/gpfs/.../yourname/kiloCraft
+   ```
+
+2. Generate the case skeleton:
+
+   ```bash
+   cd knox/scripts
+   bash create_uELM_adspin.sh
+   ```
+
+   This script creates the uELM case under `${KMELM_ROOT}/e3sm_cases/` using the domain, surfdata, and forcing data prepared in Phase 1.
+
+3. Enter the new case directory and submit it:
+
+   ```bash
+   cd "${KMELM_ROOT}/e3sm_cases/uELM_knox_*"
+   ./case.submit
+   ```
+
+   The case will run and produce history (`*.elm.h0.*.nc`) and restart (`*.elm.r.*.nc`) files in `${KMELM_ROOT}/e3sm_runs/uELM_knox_*/`.
+
+### Step 2. Locate outputs for LandSim integration
+
+After the accelerated spinup completes, you'll need the following outputs for LandSim inference (see LandSim README for details):
+
+- **Domain and surfdata files**: Located in `knox/domain_surfdata/`
+  - `knox_domain.lnd.TES_SE.4km.1d.c*.nc`
+  - `knox_surfdata.TES_SE.4km.1d.NLCD.c*.nc`
+
+- **Forcing data**: Located in `knox/forcing/` (three subfolders)
+
+- **Model outputs**: The latest run directory under `${KMELM_ROOT}/e3sm_runs/` contains:
+  - History files: `*.elm.h0.*.nc`
+  - Restart files: `*.elm.r.*.nc`
+
+These files will be used as inputs for LandSim's training data generation and inference workflow (see LandSim documentation).
+
+## Phase 3: Final Spinup
+
+### Step 1. Prepare AI-adjusted restart file (optional)
+
+If you've used LandSim to generate an AI-adjusted restart file, you can use it for the final spinup. The restart file should be generated using LandSim's workflow (see LandSim README for details).
+
+Set the path to your AI restart file:
+
+```bash
+export AI_RESTART_FILE=/path/to/LandSim/cnp_inference_knox_initial/uELM_knox_AIrestart.elm.r.0021-01-01-00000.nc
+```
+
+If you prefer to use the original restart from accelerated spinup, you can skip this step and the script will use the default restart.
+
+### Step 2. Create the final spinup case
+
+1. Regenerate the final-spinup case. The script honours the `AI_RESTART_FILE` environment variable if set:
+
+   ```bash
+   cd /gpfs/.../tes_aoi_release/knox/scripts
+   AI_RESTART_FILE=/path/to/LandSim/cnp_inference_knox_initial/uELM_knox_AIrestart.elm.r.0021-01-01-00000.nc \
+     bash create_uELM_finalspin.sh
+   ```
+
+   Or without AI restart (uses original restart):
+
+   ```bash
+   cd /gpfs/.../tes_aoi_release/knox/scripts
+   bash create_uELM_finalspin.sh
+   ```
+
+2. Enter the new case directory and submit:
+
+   ```bash
+   cd "${KMELM_ROOT}/e3sm_cases/uELM_knox_*_finalspin"
+   ./case.submit
+   ```
+
+   (Adjust the wildcard if your case name differs.)
+
