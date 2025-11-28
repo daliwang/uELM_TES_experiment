@@ -10,7 +10,7 @@ from netCDF4 import Dataset
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Randomly select a percentage of gridIDs from a domain NetCDF and write them to a new NetCDF file."
+        description="Randomly select a percentage of gridIDs from a domain NetCDF and write them to a new NetCDF file. If --out is not specified, the output name is constructed as <caseName><percent>pct_gridID.nc in --output-dir."
     )
     parser.add_argument(
         "--domain",
@@ -21,12 +21,22 @@ def parse_args() -> argparse.Namespace:
         "--percent",
         required=True,
         type=float,
-        help="Percentage of gridcells to sample. If <=1, treated as a fraction; otherwise treated as percent in [0,100].",
+        help="Percentage of gridcells to sample. If <1, treated as a fraction; otherwise treated as percent in [0,100].",
+    )
+    parser.add_argument(
+        "--case-name",
+        required=True,
+        help="Case name prefix to use when constructing the default output name <caseName><percent>pct_gridID.nc (ignored if --out is provided).",
     )
     parser.add_argument(
         "--out",
-        required=True,
+        required=False,
         help="Output NetCDF path to write selected gridIDs.",
+    )
+    parser.add_argument(
+        "--output-dir",
+        default=".",
+        help="Directory to place the auto-generated output file when --out is not provided (default: current directory).",
     )
     parser.add_argument(
         "--seed",
@@ -45,6 +55,21 @@ def parse_args() -> argparse.Namespace:
         help="Do not sort selected gridIDs; keep random order.",
     )
     return parser.parse_args()
+
+
+def _format_percent_token(percent: float) -> str:
+    """
+    Convert user-provided percent/fraction to a string token like '5pct'.
+    """
+    pct_value = percent if percent >= 1.0 else (percent * 100.0)
+    pct_rounded = int(round(pct_value))
+    return f"{pct_rounded}pct"
+
+
+def _derive_output_path(case_name: str, percent: float, output_dir: str) -> str:
+    token = _format_percent_token(percent)
+    base = f"{case_name}{token}_gridID.nc"
+    return os.path.join(output_dir or ".", base)
 
 
 def read_gridids(domain_path: str) -> Tuple[np.ndarray, Dict[str, Any], Dict[str, Any]]:
@@ -87,7 +112,8 @@ def read_like_attrs(like_path: Optional[str]) -> Tuple[Optional[Dict[str, Any]],
 def compute_sample_size(total: int, percent: float) -> int:
     if percent < 0:
         raise ValueError("Percent must be non-negative.")
-    fraction = percent if percent <= 1.0 else (percent / 100.0)
+    # Values < 1 are treated as fractions; values >= 1 are treated as percents
+    fraction = percent if percent < 1.0 else (percent / 100.0)
     if fraction <= 0:
         return 1
     k = int(round(total * fraction))
@@ -159,12 +185,14 @@ def main() -> None:
 
     like_var_attrs, like_global_attrs = read_like_attrs(args.like)
 
+    out_path = args.out if args.out else _derive_output_path(args.case_name, args.percent, args.output_dir)
+
     title_annotation = (
         f"Random selection of {num_select}/{total} gridIDs "
         f"({(num_select/total)*100:.3f}%) from {os.path.basename(args.domain)}"
     )
     write_output(
-        out_path=args.out,
+        out_path=out_path,
         selected_grid_ids=selected,
         like_var_attrs=like_var_attrs,
         like_global_attrs=like_global_attrs,
