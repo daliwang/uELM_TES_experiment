@@ -1,0 +1,12 @@
+python select_random_gridids.py --domain /gpfs/wolf2/cades/cli185/proj-shared/wangd/AI_data/TES_SE_dataset/entire_domain/domain_surfdata/SEBOX1_domain.lnd.TES_SE.4km.1d.c250201.nc \
+--percent 5 --case-name SEfinetune --output-dir ./
+
+python aoi_prepare_experiment.py --config aoi_SEfinetune5pct_config.json
+
+cd $expid/scripts
+
+sh run_domain_surfdata.sh
+sbatch run_forcing.sbatch
+
+sh create_uELM_adspin_sh
+sh create_uELM_finalspin.sh
