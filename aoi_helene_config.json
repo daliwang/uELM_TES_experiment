@@ -33,7 +33,7 @@
     "mach": "cades-baseline",
     "compiler": "gnu",
     "mpilib": "openmpi",
-    "compset": "I1850uELMTESCNPRDCTCBC"
+    "compset": "I1850CNPRDCTCBC"
   }
 }
 

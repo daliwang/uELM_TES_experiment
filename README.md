@@ -1,4 +1,4 @@
-lsTES AOI Input Generator
+uELM_TES_Experiment Input Generator
 
 Purpose
 - Prepare domain, surfdata, and forcing subsets for a user-defined Area Of Interest (AOI) for TES/uELM workflows.

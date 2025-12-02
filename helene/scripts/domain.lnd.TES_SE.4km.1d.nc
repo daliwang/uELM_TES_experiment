@@ -1,1 +1,0 @@
-/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/TES_cases_data/Daymet_ERA5_TESSFA2/entire_domain/domain_surfdata/domain.lnd.TES_SE.4km.1d.c240827.nc
