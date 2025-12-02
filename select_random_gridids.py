@@ -46,7 +46,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--like",
-        default="/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/tes_aoi_release/TNdemo_gridID.nc",
+        default="/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/uELM_TES_experiment/TNdemo_gridID.nc",
         help="Optional NetCDF file whose variable/global attributes to emulate (defaults to TNdemo_gridID.nc).",
     )
     parser.add_argument(

@@ -6,9 +6,9 @@
       "experiment_root and aoi_points path should be absolute paths"
     ],
     "expid": "knox",
-    "experiment_root": "/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/tes_aoi_release/$expid",
+    "experiment_root": "/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/uELM_TES_experiment/$expid",
     "aoi_points": {
-      "dir": "/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/tes_aoi_release/$expid",
+      "dir": "/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/uELM_TES_experiment/$expid",
       "file": "$expid_xcyc.csv"
     },
   "source": {

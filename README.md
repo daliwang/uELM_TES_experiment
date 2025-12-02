@@ -40,14 +40,14 @@ export PS1="\[\e]0;\u@\h: \w\a\]\u@\h:\w\$ "
 ```
 
 2) Use one of the provided configs (edit if needed)
-- TNdemo (example): `/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/tes_aoi_release/aoi_experiment_config.example.json`
-- Helene: `/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/tes_aoi_release/aoi_helene_config.json`
+- TNdemo (example): `/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/uELM_TES_experiment/aoi_experiment_config.example.json`
+- Helene: `/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/uELM_TES_experiment/aoi_helene_config.json`
 
 Ensure the following fields are correct for your run: `expid`, `experiment_root`, `aoi_points.dir/file`, `source.base_domain_file`, `source.surfdata_dir`, `source.surfdata_file`, `source.forcing_dir`, `scheduler`, `e3sm`.
 
 3) Prepare an experiment directory (generates wrappers)
 ```bash
-python3 /gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/tes_aoi_release/aoi_prepare_experiment.py \
+python3 /gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/uELM_TES_experiment/aoi_prepare_experiment.py \
   --config /path/to/your_config.json
 ```
 Creates: <experiment_root>/{domain_surfdata,forcing,scripts}
@@ -100,11 +100,11 @@ Use the provided example config as-is (paths are already set for CADES) or adjus
 source activate /path/to/my_env
 
 # 2) Prepare experiment
-python3 /gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/tes_aoi_release/aoi_prepare_experiment.py \
-  --config /gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/tes_aoi_release/aoi_experiment_config.example.json
+python3 /gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/uELM_TES_experiment/aoi_prepare_experiment.py \
+  --config /gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/uELM_TES_experiment/aoi_experiment_config.example.json
 
 # 3) Run domain and surfdata
-cd /gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/tes_aoi_release/TNdemo/scripts
+cd /gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/uELM_TES_experiment/TNdemo/scripts
 source ./export_env.sh
 bash run_domain_surfdata.sh
 
@@ -119,9 +119,9 @@ bash create_uELM_adspin.sh
 ```
 
 Outputs
-- Domain/Surfdata: `/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/tes_aoi_release/TNdemo/domain_surfdata/`
-- Forcing: `/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/tes_aoi_release/TNdemo/forcing/`
-- Model links: `/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/tes_aoi_release/TNdemo/atm_forcing.datm7.km.1d/`
+- Domain/Surfdata: `/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/uELM_TES_experiment/TNdemo/domain_surfdata/`
+- Forcing: `/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/uELM_TES_experiment/TNdemo/forcing/`
+- Model links: `/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/uELM_TES_experiment/TNdemo/atm_forcing.datm7.km.1d/`
 
 Workflow: Helene
 Use the provided Helene config; the experiment directory will be created.
@@ -131,11 +131,11 @@ Use the provided Helene config; the experiment directory will be created.
 source activate /path/to/my_env
 
 # 2) Prepare experiment
-python3 /gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/tes_aoi_release/aoi_prepare_experiment.py \
-  --config /gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/tes_aoi_release/aoi_helene_config.json
+python3 /gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/uELM_TES_experiment/aoi_prepare_experiment.py \
+  --config /gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/uELM_TES_experiment/aoi_helene_config.json
 
 # 3) Run domain and surfdata  (1-2 minutes)
-cd /gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/tes_aoi_release/helene/scripts
+cd /gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/uELM_TES_experiment/helene/scripts
 source ./export_env.sh
 bash run_domain_surfdata.sh
 

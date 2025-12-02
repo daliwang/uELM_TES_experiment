@@ -1,0 +1,271 @@
+/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/uELM_TES_experiment/helene/scripts/TES_AOI_surfdataGEN.py:88: DeprecationWarning: `in1d` is deprecated. Use `np.isin` instead.
+  domain_idx = np.where(np.in1d(TES_gridcell_list, AOI_points))[0]
+AOIsurfdata:/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/uELM_TES_experiment/helene/domain_surfdata//helene_surfdata.TES_SE.4km.1d.NLCD.c251201.nc
+[np.int32(0), np.int32(1), np.int32(2), np.int32(3), np.int32(4)]
+gridID_idx [173568]
+lon ('lon',)
+0
+lat ('lat',)
+0
+lon2D ('lat', 'lon')
+0
+lat2D ('lat', 'lon')
+0
+gridID ('gridcell',)
+0
+gridXID ('gridcell',)
+0
+gridYID ('gridcell',)
+0
+mxsoil_color ()
+0
+mxsoil_order ()
+0
+SOIL_COLOR ('gridcell',)
+0
+SOIL_ORDER ('gridcell',)
+0
+PCT_SAND ('nlevsoi', 'gridcell')
+10
+PCT_CLAY ('nlevsoi', 'gridcell')
+20
+ORGANIC ('nlevsoi', 'gridcell')
+30
+FMAX ('gridcell',)
+30
+natpft ('natpft',)
+30
+LANDFRAC_PFT ('gridcell',)
+30
+PFTDATA_MASK ('gridcell',)
+30
+PCT_NATVEG ('gridcell',)
+30
+PCT_CROP ('gridcell',)
+30
+PCT_NAT_PFT ('natpft', 'gridcell')
+47
+MONTHLY_LAI ('time', 'lsmpft', 'gridcell')
+finished layer#: 0
+finished layer#: 1
+finished layer#: 2
+finished layer#: 3
+finished layer#: 4
+finished layer#: 5
+finished layer#: 6
+finished layer#: 7
+finished layer#: 8
+finished layer#: 9
+finished layer#: 10
+finished layer#: 11
+251
+MONTHLY_SAI ('time', 'lsmpft', 'gridcell')
+finished layer#: 0
+finished layer#: 1
+finished layer#: 2
+finished layer#: 3
+finished layer#: 4
+finished layer#: 5
+finished layer#: 6
+finished layer#: 7
+finished layer#: 8
+finished layer#: 9
+finished layer#: 10
+finished layer#: 11
+455
+MONTHLY_HEIGHT_TOP ('time', 'lsmpft', 'gridcell')
+finished layer#: 0
+finished layer#: 1
+finished layer#: 2
+finished layer#: 3
+finished layer#: 4
+finished layer#: 5
+finished layer#: 6
+finished layer#: 7
+finished layer#: 8
+finished layer#: 9
+finished layer#: 10
+finished layer#: 11
+659
+MONTHLY_HEIGHT_BOT ('time', 'lsmpft', 'gridcell')
+finished layer#: 0
+finished layer#: 1
+finished layer#: 2
+finished layer#: 3
+finished layer#: 4
+finished layer#: 5
+finished layer#: 6
+finished layer#: 7
+finished layer#: 8
+finished layer#: 9
+finished layer#: 10
+finished layer#: 11
+863
+time ('time',)
+863
+AREA ('gridcell',)
+863
+LONGXY ('gridcell',)
+863
+LATIXY ('gridcell',)
+863
+EF1_BTR ('gridcell',)
+863
+EF1_FET ('gridcell',)
+863
+EF1_FDT ('gridcell',)
+863
+EF1_SHR ('gridcell',)
+863
+EF1_GRS ('gridcell',)
+863
+EF1_CRP ('gridcell',)
+863
+CANYON_HWR ('numurbl', 'gridcell')
+866
+EM_IMPROAD ('numurbl', 'gridcell')
+869
+EM_PERROAD ('numurbl', 'gridcell')
+872
+EM_ROOF ('numurbl', 'gridcell')
+875
+EM_WALL ('numurbl', 'gridcell')
+878
+HT_ROOF ('numurbl', 'gridcell')
+881
+THICK_ROOF ('numurbl', 'gridcell')
+884
+THICK_WALL ('numurbl', 'gridcell')
+887
+T_BUILDING_MAX ('numurbl', 'gridcell')
+890
+T_BUILDING_MIN ('numurbl', 'gridcell')
+893
+WIND_HGT_CANYON ('numurbl', 'gridcell')
+896
+WTLUNIT_ROOF ('numurbl', 'gridcell')
+899
+WTROAD_PERV ('numurbl', 'gridcell')
+902
+ALB_IMPROAD_DIR ('numrad', 'numurbl', 'gridcell')
+finished layer#: 0
+finished layer#: 1
+908
+ALB_IMPROAD_DIF ('numrad', 'numurbl', 'gridcell')
+finished layer#: 0
+finished layer#: 1
+914
+ALB_PERROAD_DIR ('numrad', 'numurbl', 'gridcell')
+finished layer#: 0
+finished layer#: 1
+920
+ALB_PERROAD_DIF ('numrad', 'numurbl', 'gridcell')
+finished layer#: 0
+finished layer#: 1
+926
+ALB_ROOF_DIR ('numrad', 'numurbl', 'gridcell')
+finished layer#: 0
+finished layer#: 1
+932
+ALB_ROOF_DIF ('numrad', 'numurbl', 'gridcell')
+finished layer#: 0
+finished layer#: 1
+938
+ALB_WALL_DIR ('numrad', 'numurbl', 'gridcell')
+finished layer#: 0
+finished layer#: 1
+944
+ALB_WALL_DIF ('numrad', 'numurbl', 'gridcell')
+finished layer#: 0
+finished layer#: 1
+950
+TK_ROOF ('nlevurb', 'numurbl', 'gridcell')
+finished layer#: 0
+finished layer#: 1
+finished layer#: 2
+finished layer#: 3
+finished layer#: 4
+965
+TK_WALL ('nlevurb', 'numurbl', 'gridcell')
+finished layer#: 0
+finished layer#: 1
+finished layer#: 2
+finished layer#: 3
+finished layer#: 4
+980
+TK_IMPROAD ('nlevurb', 'numurbl', 'gridcell')
+finished layer#: 0
+finished layer#: 1
+finished layer#: 2
+finished layer#: 3
+finished layer#: 4
+995
+CV_ROOF ('nlevurb', 'numurbl', 'gridcell')
+finished layer#: 0
+finished layer#: 1
+finished layer#: 2
+finished layer#: 3
+finished layer#: 4
+1010
+CV_WALL ('nlevurb', 'numurbl', 'gridcell')
+finished layer#: 0
+finished layer#: 1
+finished layer#: 2
+finished layer#: 3
+finished layer#: 4
+1025
+CV_IMPROAD ('nlevurb', 'numurbl', 'gridcell')
+finished layer#: 0
+finished layer#: 1
+finished layer#: 2
+finished layer#: 3
+finished layer#: 4
+1040
+NLEV_IMPROAD ('numurbl', 'gridcell')
+1043
+peatf ('gridcell',)
+1043
+abm ('gridcell',)
+1043
+gdp ('gridcell',)
+1043
+SLOPE ('gridcell',)
+1043
+STD_ELEV ('gridcell',)
+1043
+binfl ('gridcell',)
+1043
+Ws ('gridcell',)
+1043
+Dsmax ('gridcell',)
+1043
+Ds ('gridcell',)
+1043
+LAKEDEPTH ('gridcell',)
+1043
+F0 ('gridcell',)
+1043
+P3 ('gridcell',)
+1043
+ZWT0 ('gridcell',)
+1043
+PCT_WETLAND ('gridcell',)
+1043
+PCT_LAKE ('gridcell',)
+1043
+PCT_GLACIER ('gridcell',)
+1043
+TOPO ('gridcell',)
+1043
+PCT_URBAN ('numurbl', 'gridcell')
+1046
+URBAN_REGION_ID ('gridcell',)
+1046
+APATITE_P ('gridcell',)
+1046
+LABILE_P ('gridcell',)
+1046
+OCCLUDED_P ('gridcell',)
+1046
+SECONDARY_P ('gridcell',)
+1046

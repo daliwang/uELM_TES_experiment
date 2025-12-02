@@ -5,9 +5,9 @@
     "experiment_root and aoi_points path should be absolute paths"
   ],
   "expid": "TNdemo",
-  "experiment_root": "/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/tes_aoi_release/TNdemo",
+  "experiment_root": "/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/uELM_TES_experiment/TNdemo",
   "aoi_points": {
-    "dir": "/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/tes_aoi_release",
+    "dir": "/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/uELM_TES_experiment",
     "file": "TNdemo_gridID.nc"
   },
   "source": {

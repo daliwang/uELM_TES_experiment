@@ -1,0 +1,26 @@
+AOI_points_arr [[-81.535  36.55 ]] shape (1, 2)
+TES_gridcell_arr [[-100.           25.        ]
+ [ -99.95833588   25.        ]
+ [ -99.91666412   25.        ]
+ [ -99.875        25.        ]
+ [ -99.83333588   25.        ]] shape (225625, 2)
+gridID_idx (1,) [173568]
+x ('x',)
+y ('y',)
+gridID ('nj', 'ni')
+gridXID ('nj', 'ni')
+gridYID ('nj', 'ni')
+xc ('nj', 'ni')
+yc ('nj', 'ni')
+xv ('nv', 'nj', 'ni')
+reading source data
+subsetting source data(4, 1, 225625)
+putting back data into netcdf(4, 1, 1)
+yv ('nv', 'nj', 'ni')
+reading source data
+subsetting source data(4, 1, 225625)
+putting back data into netcdf(4, 1, 1)
+area ('nj', 'ni')
+mask ('nj', 'ni')
+frac ('nj', 'ni')
+Domain generation has done
