@@ -138,13 +138,13 @@ def render_run_forcing_sbatch(cfg: dict, scripts_dir: Path, exp_root: Path) -> s
     lines.append("  TIME=\"${SCHED_TIME:-" + time_limit + "}\"")
     lines.append("  MEM=\"${SCHED_MEM:-" + mem + "}\"")
     lines.append("  SRUN_NTASKS=\"${SCHED_TASKS:-2}\"")
-    lines.append("  echo \"srun -A '${ACCOUNT}' -p '${PARTITION}' -N '${NODES}' -t '${TIME}' --mem='${MEM}' -n '${SRUN_NTASKS}' python3 TES_AOI_forcingGEN_mpi.py '${FORCING_DIR}' '${OUT_DIR}' '${AOI_FILE_PATH}/' '${AOI_POINTS_FILE}'\" | tee \"${OUT_DIR}/${EXPID}_forcinggen.cmd.${date_string}\"")
+    lines.append("  echo \"srun -A '${ACCOUNT}' -p '${PARTITION}' -N '${NODES}' -t '${TIME}' --mem='${MEM}' -n '${SRUN_NTASKS}' python3 TES_AOI_forcingGEN.py '${FORCING_DIR}' '${OUT_DIR}' '${AOI_FILE_PATH}/' '${AOI_POINTS_FILE}'\" | tee \"${OUT_DIR}/${EXPID}_forcinggen.cmd.${date_string}\"")
     lines.append("  exec srun -A \"${ACCOUNT}\" -p \"${PARTITION}\" -N \"${NODES}\" -t \"${TIME}\" --mem=\"${MEM}\" -n \"${SRUN_NTASKS}\" python3 TES_AOI_forcingGEN_mpi.py \"${FORCING_DIR}\" \"${OUT_DIR}\" \"${AOI_FILE_PATH}/\" \"${AOI_POINTS_FILE}\" 2>&1 | tee \"${OUT_DIR}/${EXPID}_forcinggen.log.${date_string}\"")
     lines.append("fi")
     lines.append("")
     lines.append("# Running under Slurm allocation")
-    lines.append("echo \"srun -n '${SCHED_TASKS}' python3 TES_AOI_forcingGEN_mpi.py '${FORCING_DIR}' '${OUT_DIR}' '${AOI_FILE_PATH}/' '${AOI_POINTS_FILE}'\" | tee \"${OUT_DIR}/${EXPID}_forcinggen.cmd.${date_string}\"")
-    lines.append("srun -n \"${SCHED_TASKS:-2}\" python3 TES_AOI_forcingGEN_mpi.py \"${FORCING_DIR}\" \"${OUT_DIR}\" \"${AOI_FILE_PATH}/\" \"${AOI_POINTS_FILE}\" 2>&1 | tee \"${OUT_DIR}/${EXPID}_forcinggen.log.${date_string}\"")
+    lines.append("echo \"srun -n '${SCHED_TASKS}' python3 TES_AOI_forcingGEN.py '${FORCING_DIR}' '${OUT_DIR}' '${AOI_FILE_PATH}/' '${AOI_POINTS_FILE}'\" | tee \"${OUT_DIR}/${EXPID}_forcinggen.cmd.${date_string}\"")
+    lines.append("srun -n \"${SCHED_TASKS:-2}\" python3 TES_AOI_forcingGEN.py \"${FORCING_DIR}\" \"${OUT_DIR}\" \"${AOI_FILE_PATH}/\" \"${AOI_POINTS_FILE}\" 2>&1 | tee \"${OUT_DIR}/${EXPID}_forcinggen.log.${date_string}\"")
     return "\n".join(lines) + "\n"
 
 
