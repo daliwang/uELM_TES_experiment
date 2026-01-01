@@ -548,8 +548,21 @@ def main() -> None:
     cfg = expand_config_vars(cfg)
 
     expid = cfg["expid"]
+    # Resolve experiment_root relative to the config's directory if not absolute
+    config_dir = cfg_path.parent
     exp_root = Path(cfg["experiment_root"]).expanduser()
+    if not exp_root.is_absolute():
+        exp_root = (config_dir / exp_root).resolve()
     ensure_dir(exp_root)
+
+    # Ensure AOI directory is set and absolute; default to config directory if missing
+    if "aoi_points" in cfg and isinstance(cfg["aoi_points"], dict):
+        if "dir" not in cfg["aoi_points"] or not str(cfg["aoi_points"]["dir"]).strip():
+            cfg["aoi_points"]["dir"] = config_dir.as_posix()
+        else:
+            aoi_dir_path = Path(str(cfg["aoi_points"]["dir"]).strip()).expanduser()
+            if not aoi_dir_path.is_absolute():
+                cfg["aoi_points"]["dir"] = (config_dir / aoi_dir_path).resolve().as_posix()
 
     # Create expected subdirs
     domain_surf_dir = exp_root / "domain_surfdata"

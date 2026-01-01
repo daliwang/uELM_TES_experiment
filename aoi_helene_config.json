@@ -6,10 +6,9 @@
       "experiment_root and aoi_points path should be absolute paths"
     ],
     "expid": "helene",
-    "experiment_root": "/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/uELM_TES_experiment/helene",
+    "experiment_root": "./${expid}",
     "aoi_points": {
-      "dir": "/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/uELM_TES_experiment",
-      "file": "helene_xcyc.csv"
+      "file": "${expid}_xcyc.csv"
     },
   "source": {
     "base_domain_file": "/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/TES_cases_data/Daymet_ERA5_TESSFA2/entire_domain/domain_surfdata/domain.lnd.TES_SE.4km.1d.c240827.nc",
