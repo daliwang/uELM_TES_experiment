@@ -7,6 +7,7 @@ import re
 import shutil
 import stat
 import sys
+import subprocess
 from datetime import datetime
 from pathlib import Path
 
@@ -36,6 +37,99 @@ def resolve_required_file(path_str: str, description: str) -> Path:
     return p
 
 
+# -----------------------------
+# In-memory config resolution
+# -----------------------------
+
+def _run_git_rev_parse(start_dir: Path) -> tuple[bool, Path]:
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(start_dir), "rev-parse", "--show-toplevel"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        root = completed.stdout.strip()
+        if root:
+            return True, Path(root)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass
+    return False, Path()
+
+
+def _find_dot_git_ancestor(start_dir: Path) -> tuple[bool, Path]:
+    current = start_dir.resolve()
+    for parent in [current] + list(current.parents):
+        if (parent / ".git").exists():
+            return True, parent
+    return False, Path()
+
+
+def _detect_repo_root(preferred_dir: Path) -> Path:
+    # 1) Explicit env override
+    env_root = os.environ.get("UELM_TES_ROOT")
+    if env_root:
+        candidate = Path(os.path.expanduser(os.path.expandvars(env_root))).resolve()
+        if candidate.exists():
+            return candidate
+    # 2) Git (from preferred_dir)
+    ok, root = _run_git_rev_parse(preferred_dir)
+    if ok:
+        return root.resolve()
+    # 3) Walk up to find a .git
+    ok, root = _find_dot_git_ancestor(preferred_dir)
+    if ok:
+        return root.resolve()
+    # 4) Fallback: use the preferred_dir
+    return preferred_dir.resolve()
+
+
+def _resolve_string_value(value: str, repo_root: Path) -> str:
+    # Expand environment variables and user home first
+    expanded = os.path.expandvars(os.path.expanduser(value))
+    # Replace ${REPO_ROOT} token if present
+    expanded = expanded.replace("${REPO_ROOT}", str(repo_root))
+    expanded = expanded.replace("$REPO_ROOT", str(repo_root))
+    # Normalize to clean up redundant separators
+    normalized = os.path.normpath(expanded)
+    return normalized
+
+
+_PATH_KEYS_ABSOLUTIZE = {
+    # top-level
+    "experiment_root",
+    # nested
+    "dir",
+    "base_domain_file",
+    "surfdata_dir",
+    "forcing_dir",
+    "conda_activate",
+    "src_root",
+    "din_root",
+}
+
+
+def _absolutize_if_needed(key: str | None, value: str, base_dir: Path) -> str:
+    if os.path.isabs(value):
+        return value
+    key_lower = (key or "").lower()
+    looks_like_path = any(token in key_lower for token in ("dir", "root", "path")) or value.startswith(("~", ".", "./", "../")) or (os.sep in value)
+    if key_lower in _PATH_KEYS_ABSOLUTIZE and looks_like_path:
+        return os.path.normpath((base_dir / value).as_posix())
+    return value
+
+
+def _resolve_structure(obj, repo_root: Path, base_dir: Path, key: str | None = None):
+    if isinstance(obj, dict):
+        return {k: _resolve_structure(v, repo_root, base_dir, k) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_resolve_structure(v, repo_root, base_dir, key) for v in obj]
+    if isinstance(obj, str):
+        expanded = _resolve_string_value(obj, repo_root)
+        return _absolutize_if_needed(key, expanded, base_dir)
+    return obj
+
+
 def render_run_domain_surfdata_sh(cfg: dict, scripts_dir: Path, exp_root: Path) -> str:
     expid = cfg["expid"]
     aoi_dir = cfg["aoi_points"]["dir"].rstrip("/")
@@ -43,12 +137,19 @@ def render_run_domain_surfdata_sh(cfg: dict, scripts_dir: Path, exp_root: Path) 
     base_domain_file = cfg["source"]["base_domain_file"]
     surf_dir = cfg["source"]["surfdata_dir"].rstrip("/")
     surf_file = cfg["source"]["surfdata_file"]
+    scheduler = cfg.get("scheduler", {})
+    bootstrap_lines = scheduler.get("bootstrap", [])
 
 
     lines = []
     lines.append("#!/bin/bash")
     lines.append("set -euo pipefail")
     lines.append("")
+    # Optional environment bootstrap lines (e.g., source profile, activate env)
+    if isinstance(bootstrap_lines, list) and bootstrap_lines:
+        for cmd in bootstrap_lines:
+            lines.append(str(cmd))
+        lines.append("")
     lines.append(f'cd "{(exp_root / "scripts").as_posix()}"')
     lines.append("# Source exported environment if present")
     lines.append("if [ -f ./export_env.sh ]; then . ./export_env.sh; fi")
@@ -94,6 +195,7 @@ def render_run_forcing_sbatch(cfg: dict, scripts_dir: Path, exp_root: Path) -> s
     nodes = scheduler.get("nodes", 1)
     time_limit = scheduler.get("time", "2:00:00")
     mem = scheduler.get("mem", "128GB")
+    bootstrap_lines = scheduler.get("bootstrap", [])
 
 
     lines = []
@@ -109,6 +211,11 @@ def render_run_forcing_sbatch(cfg: dict, scripts_dir: Path, exp_root: Path) -> s
     lines.append("set -euo pipefail")
 
     lines.append("")
+    # Optional environment bootstrap lines (e.g., source profile, activate env)
+    if isinstance(bootstrap_lines, list) and bootstrap_lines:
+        for cmd in bootstrap_lines:
+            lines.append(str(cmd))
+        lines.append("")
     lines.append("# Source exported environment if present")
     lines.append("if [ -f ./export_env.sh ]; then . ./export_env.sh; fi")
 
@@ -138,13 +245,13 @@ def render_run_forcing_sbatch(cfg: dict, scripts_dir: Path, exp_root: Path) -> s
     lines.append("  TIME=\"${SCHED_TIME:-" + time_limit + "}\"")
     lines.append("  MEM=\"${SCHED_MEM:-" + mem + "}\"")
     lines.append("  SRUN_NTASKS=\"${SCHED_TASKS:-2}\"")
-    lines.append("  echo \"srun -A '${ACCOUNT}' -p '${PARTITION}' -N '${NODES}' -t '${TIME}' --mem='${MEM}' -n '${SRUN_NTASKS}' python3 TES_AOI_forcingGEN.py '${FORCING_DIR}' '${OUT_DIR}' '${AOI_FILE_PATH}/' '${AOI_POINTS_FILE}'\" | tee \"${OUT_DIR}/${EXPID}_forcinggen.cmd.${date_string}\"")
+    lines.append("  echo \"srun -A '${ACCOUNT}' -p '${PARTITION}' -N '${NODES}' -t '${TIME}' --mem='${MEM}' -n '${SRUN_NTASKS}' python3 TES_AOI_forcingGEN_mpi.py '${FORCING_DIR}' '${OUT_DIR}' '${AOI_FILE_PATH}/' '${AOI_POINTS_FILE}'\" | tee \"${OUT_DIR}/${EXPID}_forcinggen.cmd.${date_string}\"")
     lines.append("  exec srun -A \"${ACCOUNT}\" -p \"${PARTITION}\" -N \"${NODES}\" -t \"${TIME}\" --mem=\"${MEM}\" -n \"${SRUN_NTASKS}\" python3 TES_AOI_forcingGEN_mpi.py \"${FORCING_DIR}\" \"${OUT_DIR}\" \"${AOI_FILE_PATH}/\" \"${AOI_POINTS_FILE}\" 2>&1 | tee \"${OUT_DIR}/${EXPID}_forcinggen.log.${date_string}\"")
     lines.append("fi")
     lines.append("")
     lines.append("# Running under Slurm allocation")
-    lines.append("echo \"srun -n '${SCHED_TASKS}' python3 TES_AOI_forcingGEN.py '${FORCING_DIR}' '${OUT_DIR}' '${AOI_FILE_PATH}/' '${AOI_POINTS_FILE}'\" | tee \"${OUT_DIR}/${EXPID}_forcinggen.cmd.${date_string}\"")
-    lines.append("srun -n \"${SCHED_TASKS:-2}\" python3 TES_AOI_forcingGEN.py \"${FORCING_DIR}\" \"${OUT_DIR}\" \"${AOI_FILE_PATH}/\" \"${AOI_POINTS_FILE}\" 2>&1 | tee \"${OUT_DIR}/${EXPID}_forcinggen.log.${date_string}\"")
+    lines.append("echo \"srun -n '${SCHED_TASKS}' python3 TES_AOI_forcingGEN_mpi.py '${FORCING_DIR}' '${OUT_DIR}' '${AOI_FILE_PATH}/' '${AOI_POINTS_FILE}'\" | tee \"${OUT_DIR}/${EXPID}_forcinggen.cmd.${date_string}\"")
+    lines.append("srun -n \"${SCHED_TASKS:-2}\" python3 TES_AOI_forcingGEN_mpi.py \"${FORCING_DIR}\" \"${OUT_DIR}\" \"${AOI_FILE_PATH}/\" \"${AOI_POINTS_FILE}\" 2>&1 | tee \"${OUT_DIR}/${EXPID}_forcinggen.log.${date_string}\"")
     return "\n".join(lines) + "\n"
 
 
@@ -548,8 +655,12 @@ def main() -> None:
     cfg = expand_config_vars(cfg)
 
     expid = cfg["expid"]
-    # Resolve experiment_root relative to the config's directory if not absolute
     config_dir = cfg_path.parent
+    # Resolve config in-memory: expand ${REPO_ROOT}, env vars, and absolutize path-like fields
+    repo_root = _detect_repo_root(config_dir)
+    cfg = _resolve_structure(cfg, repo_root=repo_root, base_dir=config_dir)
+
+    # Resolve experiment_root (should already be absolute, but keep the fallback)
     exp_root = Path(cfg["experiment_root"]).expanduser()
     if not exp_root.is_absolute():
         exp_root = (config_dir / exp_root).resolve()

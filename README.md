@@ -157,37 +157,11 @@ Config reference (brief)
 - `scheduler`: Slurm defaults; consumed by `run_forcing.sbatch` and wrappers. Override at submit time with `SCHED_*` env vars.
 - `e3sm`: `{din_root, src_root, mach, compiler, mpilib, compset}` used by `create_uELM_adspin.sh`.
 
-Config resolution (${REPO_ROOT})
-- You can avoid hardcoded absolute paths in config by using `${REPO_ROOT}`. The helper `resolve_config.py` expands:
-  - `${REPO_ROOT}` or `$REPO_ROOT` to the repository root (auto-detected via Git).
-  - Environment variables (e.g., `$HOME`) and `~`.
-- Repo root detection order:
-  1) `UELM_TES_ROOT` env var if set (absolute path).
-  2) `git rev-parse --show-toplevel` starting from the config’s directory.
-  3) Search upward for a `.git` directory.
-  4) Fallback to the config’s directory.
-
-Examples:
-```bash
-# 1) Render a resolved config (prints and writes .resolved.json next to the input)
-python /gpfs/wolf2/cades/cli185/proj-shared/wangd/uELM_TES_experiment/resolve_config.py \
-  --config /gpfs/wolf2/cades/cli185/proj-shared/wangd/uELM_TES_experiment/aoi_helene_config.json \
-  --out /gpfs/wolf2/cades/cli185/proj-shared/wangd/uELM_TES_experiment/aoi_helene_config.resolved.json \
-  --print
-
-# (Optional) Override repo root manually (if not in a Git checkout)
-export UELM_TES_ROOT=/gpfs/wolf2/cades/cli185/proj-shared/wangd/uELM_TES_experiment
-
-# 2) Use the resolved config for experiment preparation
-python /gpfs/wolf2/cades/cli185/proj-shared/wangd/uELM_TES_experiment/aoi_prepare_experiment.py \
-  --config /gpfs/wolf2/cades/cli185/proj-shared/wangd/uELM_TES_experiment/aoi_helene_config.resolved.json
-```
-
-Notes:
-- You can skip the resolver entirely:
-  - `experiment_root` can be relative (e.g., `./helene`) and will be resolved against the directory containing the config JSON.
-  - `aoi_points.dir` is optional; if omitted, it defaults to the directory containing the config JSON.
-  - If you do use the resolver, `${REPO_ROOT}` is also supported.
+Config resolution and relative paths
+- `${REPO_ROOT}` and environment variables (e.g., `$HOME`) in the config are expanded automatically by `aoi_prepare_experiment.py`.
+- Relative paths are resolved against the directory containing the config JSON.
+- `aoi_points.dir` is optional; if omitted, it defaults to the config’s directory.
+- You may also set `UELM_TES_ROOT` to override the detected repo root (used for `${REPO_ROOT}` expansion).
 - Other absolute paths (e.g., large input datasets under `source.*`) can remain absolute, or you may introduce additional env variables and they will be expanded.
 
 Environment

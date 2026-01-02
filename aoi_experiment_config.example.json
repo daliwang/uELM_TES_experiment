@@ -1,14 +1,12 @@
 {
   "_comments": [
     "expid and the first part of aoi_points.file should be the same",
-    "users only need to modify expid and experiment_root for the expriment on baseline",
-    "experiment_root and aoi_points path should be absolute paths"
+    "users only need to modify expid and experiment_root for the expriment on baseline"
   ],
   "expid": "TNdemo",
-  "experiment_root": "/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/uELM_TES_experiment/TNdemo",
+  "experiment_root": "./${expid}",
   "aoi_points": {
-    "dir": "/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/uELM_TES_experiment",
-    "file": "TNdemo_gridID.nc"
+    "file": "${expid}_gridID.nc"
   },
   "source": {
     "base_domain_file": "/gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/TES_cases_data/Daymet_ERA5_TESSFA2/entire_domain/domain_surfdata/domain.lnd.TES_SE.4km.1d.c240827.nc",
@@ -20,11 +18,13 @@
     "account": "CLI185",
     "partition": "batch_ccsi",
     "nodes": 1,
-    "time": "6:00:00",
+    "time": "12:00:00",
     "mem": "500GB",
-    "module": "python/3.11-anaconda3",
-    "conda_activate": "/ccsopen/home/wangd/compEnv",
-    "tasks": 4
+    "tasks": 4,
+    "bootstrap": [
+    "source /sw/baseline/nsp/init/profile",
+    "source /gpfs/wolf2/cades/cli185/proj-shared/wangd/kiloCraft/python_test_env/activate_shared_env.sh"
+    ]
   },
   "e3sm": {
     "din_root": "//gpfs/wolf2/cades/cli185/world-shared/e3sm",
